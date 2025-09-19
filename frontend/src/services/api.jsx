@@ -13,4 +13,9 @@ export function authHeader(token) {
   return { Authorization: `Bearer ${token}` };
 }
 
+export const createNote = (data) => api.post("/notes", data);
+export const getNotes = () => api.get("/notes");
+export const upgradeTenant = (slug) => api.post(`/tenants/${slug}/upgrade`);
+
+
 export default api;

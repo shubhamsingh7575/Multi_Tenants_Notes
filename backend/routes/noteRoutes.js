@@ -10,12 +10,10 @@ router.post("/", authMiddleware, async (req, res) => {
     const tenant = req.user.tenant;
 
     // Free plan limit: 3 notes
-    if (tenant.plan === "FREE") {
+    if (tenant && tenant.plan === "FREE") {
       const count = await Note.countDocuments({ tenant: tenant._id });
       if (count >= 3) {
-        return res
-          .status(403)
-          .json({ message: "Free plan limit reached. Upgrade to Pro for unlimited notes." });
+        return res.status(403).json({ message: "Free plan limit reached. Upgrade to Pro for unlimited notes." });
       }
     }
 
@@ -23,8 +21,7 @@ router.post("/", authMiddleware, async (req, res) => {
       title: req.body.title,
       content: req.body.content,
       tenant: tenant._id,
-        
-      user: req.user._id,
+      createdBy: req.user._id
     });
 
     res.status(201).json(note);
@@ -37,7 +34,7 @@ router.post("/", authMiddleware, async (req, res) => {
 // Get all notes for tenant
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    const notes = await Note.find({ tenant: req.user.tenant._id });
+    const notes = await Note.find({ tenant: req.user.tenant._id }).sort({ createdAt: -1 });
     res.json(notes);
   } catch (err) {
     console.error(err);
