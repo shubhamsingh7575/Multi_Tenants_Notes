@@ -45,4 +45,25 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/check", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email }).populate("tenant");
+    console.log("hit", user);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.status(200).json({
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        tenant: user.tenant ? user.tenant.slug : null,
+        tenantPlan: user.tenant ? user.tenant.plan : null
+      }
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+})
+
 module.exports = router;

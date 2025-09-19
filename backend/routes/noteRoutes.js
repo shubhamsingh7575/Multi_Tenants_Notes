@@ -6,16 +6,22 @@ const router = express.Router();
 
 // Create a note
 router.post("/", authMiddleware, async (req, res) => {
+  console.log("ytfhbj");
   try {
     const tenant = req.user.tenant;
+    console.log("hoi", tenant)
 
     // Free plan limit: 3 notes
     if (tenant && tenant.plan === "FREE") {
       const count = await Note.countDocuments({ tenant: tenant._id });
+      console.log("count", count);
       if (count >= 3) {
+        console.log("hogs")
         return res.status(403).json({ message: "Free plan limit reached. Upgrade to Pro for unlimited notes." });
       }
     }
+
+    console.log("nhi hoga")
 
     const note = await Note.create({
       title: req.body.title,

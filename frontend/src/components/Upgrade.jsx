@@ -9,22 +9,35 @@ export default function Upgrade({ token, user, onUpgraded, setError }) {
     try {
       await api.post(`/tenants/${user.tenant}/upgrade`, {}, { headers: authHeader(token) });
       alert("Tenant upgraded to PRO");
-      onUpgraded();
+      onUpgraded({ plan: "PRO" });
+      const upgradedUser = await api.post("/auth/check", { email: user.email });
+      console.log("updgrade", upgradedUser.data.user);
+      localStorage.removeItem("user")
+      localStorage.setItem("user", JSON.stringify(upgradedUser.data.user));
+      window.location.reload();
     } catch (err) {
+      console.log("error:", err);
       setError(err.response?.data?.message || "Upgrade failed");
     } finally {
       setLoading(false);
     }
   }
-
+  console.log("user", user);
   return (
-    <div className="upgrade">
-      <p>Free plan limit reached. Upgrade to Pro to add more notes.</p>
-      {user.role === "ADMIN" ? (
-        <button onClick={upgrade} disabled={loading}>{loading ? "Upgrading..." : "Upgrade to Pro"}</button>
-      ) : (
-        <p className="small">Ask an Admin to upgrade the tenant.</p>
+    <div>
+      {user?.tenantPlan === "FREE" && (
+        user.role === "ADMIN" ? (
+          <div className="upgrade">
+            <p>Free plan limit reached. Upgrade to Pro to add more notes.</p>
+            <button onClick={upgrade} disabled={loading}>
+              {loading ? "Upgrading..." : "Upgrade to Pro"}
+            </button>
+          </div>
+        ) : (
+          <p className="small">Free plan limit reached. Ask an Admin to upgrade the tenant.</p>
+        )
       )}
+
     </div>
   );
 }

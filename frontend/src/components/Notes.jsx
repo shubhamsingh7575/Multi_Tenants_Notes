@@ -14,7 +14,8 @@ export default function Notes({ token, user, onLogout }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get("/notes", { headers: authHeader(token) });
+      console.log(user)
+      const res = await api.get(`/notes`, { headers: authHeader(token) });
       setNotes(res.data);
       // set limitReached if tenant plan is FREE and notes length >= 3
       if (user && user.tenant && user.role) {
@@ -39,7 +40,7 @@ export default function Notes({ token, user, onLogout }) {
     e && e.preventDefault();
     setError(null);
     try {
-      await api.post("/notes", { title, content }, { headers: authHeader(token) });
+      await api.post(`/notes`, { title, content }, { headers: authHeader(token) });
       setTitle(""); setContent("");
       await fetchNotes();
     } catch (err) {
