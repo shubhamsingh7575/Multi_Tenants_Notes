@@ -1,7 +1,16 @@
 import axios from "axios";
 
-const API = axios.create({
-  baseURL: "http://localhost:5000", // change to deployed backend URL on Vercel
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+const api = axios.create({
+  baseURL: API_BASE + "/api",
+  headers: { "Content-Type": "application/json" },
+  // withCredentials: true // not required for token-based auth
 });
 
-export default API;
+// helper to attach token
+export function authHeader(token) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export default api;

@@ -1,27 +1,30 @@
-import React from "react";
-import API from "../services/api";
+import React, { useState } from "react";
+import api, { authHeader } from "../services/api";
 
-function Upgrade({ user, setLimitReached }) {
-  const upgradePlan = async () => {
+export default function Upgrade({ token, user, onUpgraded, setError }) {
+  const [loading, setLoading] = useState(false);
+
+  async function upgrade() {
+    setLoading(true);
     try {
-      await API.post(
-        `/tenants/${user.tenant}/upgrade`,
-        {},
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-      );
-      alert("Tenant upgraded to PRO!");
-      setLimitReached(false);
+      await api.post(`/tenants/${user.tenant}/upgrade`, {}, { headers: authHeader(token) });
+      alert("Tenant upgraded to PRO");
+      onUpgraded();
     } catch (err) {
-      alert("Only Admin can upgrade the plan");
+      setError(err.response?.data?.message || "Upgrade failed");
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="upgrade-box">
-      <p>Free plan limit reached! Upgrade to Pro for unlimited notes.</p>
-      {user.role === "ADMIN" && <button onClick={upgradePlan}>Upgrade to Pro</button>}
+    <div className="upgrade">
+      <p>Free plan limit reached. Upgrade to Pro to add more notes.</p>
+      {user.role === "ADMIN" ? (
+        <button onClick={upgrade} disabled={loading}>{loading ? "Upgrading..." : "Upgrade to Pro"}</button>
+      ) : (
+        <p className="small">Ask an Admin to upgrade the tenant.</p>
+      )}
     </div>
   );
 }
-
-export default Upgrade;

@@ -23,7 +23,8 @@ router.post("/", authMiddleware, async (req, res) => {
       title: req.body.title,
       content: req.body.content,
       tenant: tenant._id,
-      createdBy: req.user._id,
+        
+      user: req.user._id,
     });
 
     res.status(201).json(note);

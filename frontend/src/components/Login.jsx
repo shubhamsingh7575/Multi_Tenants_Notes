@@ -1,41 +1,44 @@
 import React, { useState } from "react";
-import API from "../services/api";
+import api from "../services/api";
 
-function Login({ setUser }) {
+export default function Login({ onAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const submitHandler = async (e) => {
+  async function submit(e) {
     e.preventDefault();
+    setLoading(true);
     try {
-      const { data } = await API.post("/api/auth/login", { email, password });
-      localStorage.setItem("token", data.token);
-      setUser(data);
+      const res = await api.post("/auth/login", { email, password });
+      // expected: { token, user: { email, role, tenant } }
+      const { token, user } = res.data;
+      onAuth(token, user);
     } catch (err) {
-      alert("Invalid credentials");
+      alert(err.response?.data?.message || err.response?.data || "Login failed");
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <form onSubmit={submitHandler} className="card">
+    <div className="card center">
       <h2>Login</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <button type="submit">Login</button>
-    </form>
+      <form onSubmit={submit} className="form">
+        <input value={email} onChange={e => setEmail(e.target.value)} placeholder="email" required />
+        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="password" required />
+        <button type="submit" disabled={loading}>{loading ? "Logging in..." : "Login"}</button>
+      </form>
+
+      <div className="hint">
+        <b>Test accounts (password: password)</b>
+        <ul>
+          <li>admin@acme.test (Admin)</li>
+          <li>user@acme.test (Member)</li>
+          <li>admin@globex.test (Admin)</li>
+          <li>user@globex.test (Member)</li>
+        </ul>
+      </div>
+    </div>
   );
 }
-
-export default Login;

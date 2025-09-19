@@ -1,103 +1,111 @@
 import React, { useEffect, useState } from "react";
-import API from "../services/api";
+import api, { authHeader } from "../services/api";
 import Upgrade from "./Upgrade";
 
-function Notes({ user, setUser }) {
+export default function Notes({ token, user, onLogout }) {
   const [notes, setNotes] = useState([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [error, setError] = useState(null);
   const [limitReached, setLimitReached] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const fetchNotes = async () => {
+  async function fetchNotes() {
+    setLoading(true);
+    setError(null);
     try {
-      const { data } = await API.get("/api/notes", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setNotes(data);
-      if (user.role === "MEMBER" || user.role === "ADMIN") {
-        if (data.length >= 3 && user.tenant !== "pro") {
-          setLimitReached(true);
-        }
+      const res = await api.get("/notes", { headers: authHeader(token) });
+      setNotes(res.data);
+      // set limitReached if tenant plan is FREE and notes length >= 3
+      if (user && user.tenant && user.role) {
+        // We don't have tenant.plan from login by default. We'll consider limit based on API response count.
+        const isFree = true; // fallback; backend enforces exact rule
+        if (isFree && res.data.length >= 3) setLimitReached(true);
+        else setLimitReached(false);
       }
     } catch (err) {
-      console.error(err);
+      setError(err.response?.data?.message || "Failed to load notes");
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
     fetchNotes();
+    // eslint-disable-next-line
   }, []);
 
-  const addNote = async (e) => {
-    e.preventDefault();
+  async function createNote(e) {
+    e && e.preventDefault();
+    setError(null);
     try {
-      await API.post(
-        "/api/notes",
-        { title, content },
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-      );
-      setTitle("");
-      setContent("");
-      fetchNotes();
+      await api.post("/notes", { title, content }, { headers: authHeader(token) });
+      setTitle(""); setContent("");
+      await fetchNotes();
     } catch (err) {
-      alert(err.response?.data?.message || "Error adding note");
+      const msg = err.response?.data?.message || "Failed to create note";
+      setError(msg);
+      if (err.response?.status === 403) {
+        setLimitReached(true);
+      }
     }
-  };
+  }
 
-  const deleteNote = async (id) => {
+  async function deleteNote(id) {
     try {
-      await API.delete(`/api/notes/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      fetchNotes();
+      await api.delete(`/notes/${id}`, { headers: authHeader(token) });
+      setNotes(prev => prev.filter(n => n._id !== id));
     } catch (err) {
-      console.error(err);
+      setError(err.response?.data?.message || "Delete failed");
     }
-  };
+  }
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
-  };
+  function onUpgraded() {
+    // called after upgrade; refetch notes and clear limit flag
+    setLimitReached(false);
+    fetchNotes();
+  }
 
   return (
-    <div className="card">
-      <h2>Notes</h2>
-      <p>
-        Logged in as <strong>{user.email}</strong> ({user.role}) in tenant{" "}
-        <strong>{user.tenant}</strong>
-      </p>
-      <button onClick={logout}>Logout</button>
+    <div className="container">
+      <header className="topbar">
+        <div>
+          <h2>Tenant: {user.tenant}</h2>
+          <div>{user.email} — {user.role}</div>
+        </div>
+        <div>
+          <button onClick={onLogout} className="ghost">Logout</button>
+        </div>
+      </header>
 
-      {limitReached && <Upgrade user={user} setLimitReached={setLimitReached} />}
+      <div className="card">
+        <h3>Create note</h3>
+        <form onSubmit={createNote} className="form">
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" required />
+          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Content" />
+          <button type="submit">Create</button>
+        </form>
 
-      <form onSubmit={addNote}>
-        <input
-          type="text"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-        <textarea
-          placeholder="Content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-        <button type="submit">Add Note</button>
-      </form>
+        {error && <div className="error">{error}</div>}
+        {limitReached && <Upgrade token={token} user={user} onUpgraded={onUpgraded} setError={setError} />}
+      </div>
 
-      <ul className="note-list">
-        {notes.map((note) => (
-          <li key={note._id}>
-            <h3>{note.title}</h3>
-            <p>{note.content}</p>
-            <button onClick={() => deleteNote(note._id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      <div className="card">
+        <h3>Notes</h3>
+        {loading ? <div>Loading…</div> : null}
+        <ul className="note-list">
+          {notes.map(n => (
+            <li key={n._id} className="note-item">
+              <div className="note-head">
+                <strong>{n.title}</strong>
+                <button className="danger" onClick={() => deleteNote(n._id)}>Delete</button>
+              </div>
+              <div className="note-body">{n.content}</div>
+              <div className="meta">created: {new Date(n.createdAt || n.updatedAt || Date.now()).toLocaleString()}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
-
-export default Notes;
