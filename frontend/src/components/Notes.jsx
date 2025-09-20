@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api, { authHeader } from "../services/api";
 import Upgrade from "./Upgrade";
+import "./Notes.css"; // Make sure to update the CSS
 
 export default function Notes({ token, user, onLogout }) {
   const [notes, setNotes] = useState([]);
@@ -14,16 +15,11 @@ export default function Notes({ token, user, onLogout }) {
     setLoading(true);
     setError(null);
     try {
-      console.log(user)
       const res = await api.get(`/notes`, { headers: authHeader(token) });
       setNotes(res.data);
-      // set limitReached if tenant plan is FREE and notes length >= 3
-      if (user && user.tenant && user.role) {
-        // We don't have tenant.plan from login by default. We'll consider limit based on API response count.
-        const isFree = true; // fallback; backend enforces exact rule
-        if (isFree && res.data.length >= 3) setLimitReached(true);
-        else setLimitReached(false);
-      }
+      const isFree = true;
+      if (isFree && res.data.length >= 3) setLimitReached(true);
+      else setLimitReached(false);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load notes");
     } finally {
@@ -33,22 +29,19 @@ export default function Notes({ token, user, onLogout }) {
 
   useEffect(() => {
     fetchNotes();
-    // eslint-disable-next-line
   }, []);
 
   async function createNote(e) {
-    e && e.preventDefault();
+    e?.preventDefault();
     setError(null);
     try {
       await api.post(`/notes`, { title, content }, { headers: authHeader(token) });
-      setTitle(""); setContent("");
+      setTitle("");
+      setContent("");
       await fetchNotes();
     } catch (err) {
-      const msg = err.response?.data?.message || "Failed to create note";
-      setError(msg);
-      if (err.response?.status === 403) {
-        setLimitReached(true);
-      }
+      setError(err.response?.data?.message || "Failed to create note");
+      if (err.response?.status === 403) setLimitReached(true);
     }
   }
 
@@ -62,7 +55,6 @@ export default function Notes({ token, user, onLogout }) {
   }
 
   function onUpgraded() {
-    // called after upgrade; refetch notes and clear limit flag
     setLimitReached(false);
     fetchNotes();
   }
@@ -70,39 +62,36 @@ export default function Notes({ token, user, onLogout }) {
   return (
     <div className="container">
       <header className="topbar">
-        <div>
+        <div className="user-info">
           <h2>Tenant: {user.tenant}</h2>
-          <div>{user.email} — {user.role}</div>
+          <span>{user.email} — {user.role}</span>
         </div>
-        <div>
-          <button onClick={onLogout} className="ghost">Logout</button>
-        </div>
+        <button onClick={onLogout} className="ghost logout-btn">Logout</button>
       </header>
 
-      <div className="card">
-        <h3>Create note</h3>
+      <div className="card create-note-card">
+        <h3>Create Note</h3>
         <form onSubmit={createNote} className="form">
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" required />
           <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Content" />
-          <button type="submit">Create</button>
+          <button type="submit" className="btn-primary">Create</button>
         </form>
-
         {error && <div className="error">{error}</div>}
         {limitReached && <Upgrade token={token} user={user} onUpgraded={onUpgraded} setError={setError} />}
       </div>
 
-      <div className="card">
+      <div className="card notes-card">
         <h3>Notes</h3>
-        {loading ? <div>Loading…</div> : null}
+        {loading && <div className="loading">Loading…</div>}
         <ul className="note-list">
           {notes.map(n => (
             <li key={n._id} className="note-item">
               <div className="note-head">
                 <strong>{n.title}</strong>
-                <button className="danger" onClick={() => deleteNote(n._id)}>Delete</button>
+                <button className="btn-danger" onClick={() => deleteNote(n._id)}>Delete</button>
               </div>
               <div className="note-body">{n.content}</div>
-              <div className="meta">created: {new Date(n.createdAt || n.updatedAt || Date.now()).toLocaleString()}</div>
+              <div className="meta">Created: {new Date(n.createdAt || n.updatedAt || Date.now()).toLocaleString()}</div>
             </li>
           ))}
         </ul>
