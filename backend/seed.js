@@ -26,10 +26,10 @@ const seedData = async () => {
       { email: "user@globex.test", password: hashedPassword, role: "MEMBER", tenant: globex._id }
     ]);
 
-    console.log("✅ Seed data inserted successfully");
+    console.log("Seed data inserted successfully");
     process.exit();
   } catch (error) {
-    console.error("❌ Error seeding data:", error);
+    console.error("Error seeding data:", error);
     process.exit(1);
   }
 };

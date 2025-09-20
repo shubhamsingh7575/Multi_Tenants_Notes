@@ -16,7 +16,7 @@ body {
   background-color: #303132;
   padding: 2rem;
   border-radius: 8px;
-  width: 400px; /* Increased width */
+  width: 400px; 
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
