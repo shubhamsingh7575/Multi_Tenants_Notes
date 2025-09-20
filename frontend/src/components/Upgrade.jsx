@@ -22,7 +22,7 @@ export default function Upgrade({ token, user, onUpgraded, setError }) {
       setLoading(false);
     }
   }
-  console.log("user", user);
+
   return (
     <div>
       {user?.tenantPlan === "FREE" && (

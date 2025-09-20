@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import api, { authHeader } from "../services/api";
 import Upgrade from "./Upgrade";
+import InviteUser from "./InviteUser";
 import "./Notes.css"; // Make sure to update the CSS
-
 export default function Notes({ token, user, onLogout }) {
   const [notes, setNotes] = useState([]);
   const [title, setTitle] = useState("");
@@ -10,6 +10,12 @@ export default function Notes({ token, user, onLogout }) {
   const [error, setError] = useState(null);
   const [limitReached, setLimitReached] = useState(false);
   const [loading, setLoading] = useState(false);
+
+    // Edit state
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+
 
   async function fetchNotes() {
     setLoading(true);
@@ -54,6 +60,36 @@ export default function Notes({ token, user, onLogout }) {
     }
   }
 
+   // start editing
+  function startEdit(note) {
+    setEditingId(note._id);
+    setEditTitle(note.title);
+    setEditContent(note.content);
+  }
+
+  async function saveEdit(e) {
+    e && e.preventDefault();
+    try {
+      const res = await api.put(
+        `/notes/${editingId}`,
+        { title: editTitle, content: editContent },
+        { headers: authHeader(token) }
+      );
+      setNotes((prev) => prev.map((n) => (n._id === editingId ? res.data : n)));
+      setEditingId(null);
+      setEditTitle("");
+      setEditContent("");
+    } catch (err) {
+      setError(err.response?.data?.message || "Update failed");
+    }
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditTitle("");
+    setEditContent("");
+  }
+
   function onUpgraded() {
     setLimitReached(false);
     fetchNotes();
@@ -80,18 +116,67 @@ export default function Notes({ token, user, onLogout }) {
         {limitReached && <Upgrade token={token} user={user} onUpgraded={onUpgraded} setError={setError} />}
       </div>
 
-      <div className="card notes-card">
+       {/* Admin invite panel */}
+      {user.role === "ADMIN" && (
+        <InviteUser
+          token={token}
+          user={user}
+          onInvited={(u) => console.log("Invited:", u)}
+        />
+      )}
+
+      <div className="card">
         <h3>Notes</h3>
-        {loading && <div className="loading">Loading…</div>}
+        {loading ? <div>Loading…</div> : null}
         <ul className="note-list">
-          {notes.map(n => (
+          {notes.map((n) => (
             <li key={n._id} className="note-item">
-              <div className="note-head">
-                <strong>{n.title}</strong>
-                <button className="btn-danger" onClick={() => deleteNote(n._id)}>Delete</button>
-              </div>
-              <div className="note-body">{n.content}</div>
-              <div className="meta">Created: {new Date(n.createdAt || n.updatedAt || Date.now()).toLocaleString()}</div>
+              {editingId === n._id ? (
+                <form onSubmit={saveEdit} className="form">
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    required
+                  />
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="submit">Save</button>
+                    <button type="button" onClick={cancelEdit} className="ghost">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="note-head">
+                    <strong>{n.title}</strong>
+                    <div>
+                      <button
+                        onClick={() => startEdit(n)}
+                        className="btn-edit"
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        className="btn-danger"
+                        onClick={() => deleteNote(n._id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  <div className="note-body">{n.content}</div>
+                  <div className="meta">
+                    created:{" "}
+                    {new Date(
+                      n.createdAt || n.updatedAt || Date.now()
+                    ).toLocaleString()}
+                  </div>
+                </>
+              )}
             </li>
           ))}
         </ul>
